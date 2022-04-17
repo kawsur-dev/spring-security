@@ -5,12 +5,14 @@ import com.service.UserService;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,8 +38,7 @@ public class UserController {
         if (sortKey != null) {
             int field = Integer.parseInt(sortKey);
             users = userService.sort(field);
-        }
-        else {
+        } else {
             users = userService.getAll();
         }
         model.addAttribute("users", users);
@@ -52,9 +53,15 @@ public class UserController {
     }
 
     @RequestMapping("/create")
-    public String create(@ModelAttribute("user") User user) {
-        userService.save(user);
-        return "redirect:/user/list";
+    public String create(@Valid @ModelAttribute("user") User user, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+
+            return "create-user-form";
+        }
+        else {
+            userService.save(user);
+            return "redirect:/user/list";
+        }
     }
 
     @RequestMapping("/user-update-form")
@@ -81,8 +88,7 @@ public class UserController {
         List<User> users = new ArrayList<>();
         if (firstname == null) {
             users = userService.getAll();
-        }
-        else {
+        } else {
             users = userService.getAll(firstname);
         }
         model.addAttribute("users", users);
