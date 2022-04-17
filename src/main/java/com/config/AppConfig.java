@@ -6,19 +6,27 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import javax.sql.DataSource;
 import java.beans.PropertyVetoException;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 @Configuration
 @EnableWebMvc
-@ComponentScan(basePackages="com")
-@PropertySource("classpath:persistence-mysql.properties")
-public class AppConfig {
+@EnableTransactionManagement
+@ComponentScan(basePackages = {"com.dao", "com.controller", "com.service", "com.rest"})
+@PropertySource({"classpath:persistence-mysql.properties"})
+public class AppConfig implements WebMvcConfigurer {
 
     private final Environment env;
 
@@ -37,7 +45,7 @@ public class AppConfig {
     }
 
     @Bean
-    public DataSource securityDataSource() {
+    public DataSource dataSource() {
         ComboPooledDataSource securityDataSource
                 = new ComboPooledDataSource();
 
@@ -70,5 +78,34 @@ public class AppConfig {
         String propVal = env.getProperty(propName);
         int intPropVal = Integer.parseInt(propVal);
         return intPropVal;
+    }
+
+    @Bean
+    public LocalSessionFactoryBean sessionFactory() {
+        LocalSessionFactoryBean localSessionFactoryBean = new LocalSessionFactoryBean();
+        localSessionFactoryBean.setDataSource(dataSource());
+        localSessionFactoryBean.setPackagesToScan("com.model");
+        Properties properties = getHibernateProperties();
+        localSessionFactoryBean.setHibernateProperties(properties);
+        return localSessionFactoryBean;
+    }
+
+    private Properties getHibernateProperties() {
+        Properties properties = new Properties();
+        properties.put("hibernate.dialect", env.getRequiredProperty("hibernate.dialect"));
+        properties.put("hibernate.show_sql", env.getRequiredProperty("hibernate.show_sql"));
+        return properties;
+    }
+
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        HibernateTransactionManager hibernateTransactionManager = new HibernateTransactionManager();
+        hibernateTransactionManager.setSessionFactory(sessionFactory().getObject());
+        return hibernateTransactionManager;
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/resources/**").addResourceLocations("/resources/");
     }
 }
